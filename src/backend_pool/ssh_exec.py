@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from twisted.conch.ssh import channel, common, connection, transport, userauth
 from twisted.internet import defer, protocol
-from twisted.internet import reactor  # type: ignore
+from twisted.internet import reactor
 
 
-# object is added for Python 2.7 compatibility (#1198) - as is super with args
 class PasswordAuth(userauth.SSHUserAuthClient):
     def __init__(self, user, password, conn):
         super().__init__(user, conn)

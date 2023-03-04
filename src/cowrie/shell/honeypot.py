@@ -81,7 +81,7 @@ class HoneyPotShell:
                 elif "$(" in tok or "`" in tok:
                     tok = self.do_command_substitution(tok)
                 elif tok.startswith("${"):
-                    envRex = re.compile(r"^\$([_a-zA-Z0-9]+)$")
+                    envRex = re.compile(r"^\${([_a-zA-Z0-9]+)}$")
                     envSearch = envRex.search(tok)
                     if envSearch is not None:
                         envMatch = envSearch.group(1)
@@ -90,7 +90,7 @@ class HoneyPotShell:
                         else:
                             continue
                 elif tok.startswith("$"):
-                    envRex = re.compile(r"^\${([_a-zA-Z0-9]+)}$")
+                    envRex = re.compile(r"^\$([_a-zA-Z0-9]+)$")
                     envSearch = envRex.search(tok)
                     if envSearch is not None:
                         envMatch = envSearch.group(1)
@@ -172,7 +172,7 @@ class HoneyPotShell:
 
         return result
 
-    def run_subshell_command(self, cmd_expr):
+    def run_subshell_command(self, cmd_expr: str) -> str:
         # extract the command from $(...) or `...` or (...) expression
         if cmd_expr.startswith("$("):
             cmd = cmd_expr[2:-1]
@@ -187,7 +187,11 @@ class HoneyPotShell:
         self.protocol.cmdstack[-1].lineReceived(cmd)
         # remove the shell
         res = self.protocol.cmdstack.pop()
-        return res.protocol.pp.redirected_data.decode()[:-1]
+        try:
+            output: str = res.protocol.pp.redirected_data.decode()[:-1]
+            return output
+        except AttributeError:
+            return ""
 
     def runCommand(self):
         pp = None
@@ -198,7 +202,7 @@ class HoneyPotShell:
             else:
                 self.showPrompt()
 
-        def parse_arguments(arguments: str) -> list[str]:
+        def parse_arguments(arguments: list[str]) -> list[str]:
             parsed_arguments = []
             for arg in arguments:
                 parsed_arguments.append(arg)
@@ -242,12 +246,12 @@ class HoneyPotShell:
         # Probably no reason to be this comprehensive for just PATH...
         environ = copy.copy(self.environ)
         cmd_array = []
-        cmd = {}
+        cmd: dict[str, Any] = {}
         while cmdAndArgs:
             piece = cmdAndArgs.pop(0)
             if piece.count("="):
-                key, value = piece.split("=", 1)
-                environ[key] = value
+                key, val = piece.split("=", 1)
+                environ[key] = val
                 continue
             cmd["command"] = piece
             cmd["rargs"] = []
@@ -258,13 +262,13 @@ class HoneyPotShell:
             return
 
         pipe_indices = [i for i, x in enumerate(cmdAndArgs) if x == "|"]
-        multipleCmdArgs = []
+        multipleCmdArgs: list[list[str]] = []
         pipe_indices.append(len(cmdAndArgs))
         start = 0
 
         # Gather all arguments with pipes
 
-        for index, pipe_indice in enumerate(pipe_indices):
+        for _index, pipe_indice in enumerate(pipe_indices):
             multipleCmdArgs.append(cmdAndArgs[start:pipe_indice])
             start = pipe_indice + 1
 
@@ -274,7 +278,7 @@ class HoneyPotShell:
         cmd_array.append(cmd)
         cmd = {}
 
-        for index, value in enumerate(multipleCmdArgs):
+        for value in multipleCmdArgs:
             cmd["command"] = value.pop(0)
             cmd["rargs"] = parse_arguments(value)
             cmd_array.append(cmd)
@@ -424,7 +428,7 @@ class HoneyPotShell:
             return
 
         # Clear early so we can call showPrompt if needed
-        for i in range(self.protocol.lineBufferIndex):
+        for _i in range(self.protocol.lineBufferIndex):
             self.protocol.terminal.cursorBackward()
             self.protocol.terminal.deleteCharacter()
 
@@ -544,7 +548,7 @@ class StdOutStdErrEmulationProtocol:
         pass
 
     def processExited(self, reason):
-        log.msg("processExited for %s, status %d" % (self.cmd, reason.value.exitCode))
+        log.msg(f"processExited for {self.cmd}, status {reason.value.exitCode}")
 
     def processEnded(self, reason):
-        log.msg("processEnded for %s, status %d" % (self.cmd, reason.value.exitCode))
+        log.msg(f"processEnded for {self.cmd}, status {reason.value.exitCode}")

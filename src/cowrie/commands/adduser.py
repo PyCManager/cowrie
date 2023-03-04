@@ -6,7 +6,7 @@ from __future__ import annotations
 import random
 from typing import Optional
 
-from twisted.internet import reactor  # type: ignore
+from twisted.internet import reactor
 
 from cowrie.shell.command import HoneyPotCommand
 
@@ -50,7 +50,7 @@ class Command_adduser(HoneyPotCommand):
     ]
     username: Optional[str] = None
 
-    def start(self):
+    def start(self) -> None:
         self.item = 0
         for arg in self.args:
             if arg.startswith("-") or arg.isdigit():
@@ -64,7 +64,7 @@ class Command_adduser(HoneyPotCommand):
 
         self.do_output()
 
-    def do_output(self):
+    def do_output(self) -> None:
         if self.item == len(self.output):
             self.item = 7
             self.schedule_next()
@@ -81,10 +81,10 @@ class Command_adduser(HoneyPotCommand):
             self.item += 1
             self.schedule_next()
 
-    def schedule_next(self):
-        self.scheduled = reactor.callLater(0.5 + random.random() * 1, self.do_output)
+    def schedule_next(self) -> None:
+        self.scheduled = reactor.callLater(0.5 + random.random() * 1, self.do_output)  # type: ignore[attr-defined]
 
-    def lineReceived(self, line):
+    def lineReceived(self, line: str) -> None:
         if self.item + 1 == len(self.output) and line.strip() in ("n", "no"):
             self.exit()
             return

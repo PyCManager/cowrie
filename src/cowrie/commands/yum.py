@@ -10,9 +10,10 @@ from __future__ import annotations
 import hashlib
 import random
 import re
+from typing import Any, Callable, Optional
 
 from twisted.internet import defer
-from twisted.internet import reactor  # type: ignore
+from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import log
 
@@ -24,9 +25,9 @@ commands = {}
 
 class Command_faked_package_class_factory:
     @staticmethod
-    def getCommand(name):
+    def getCommand(name: str) -> Callable:
         class Command_faked_installation(HoneyPotCommand):
-            def call(self):
+            def call(self) -> None:
                 self.write(f"{name}: Segmentation fault\n")
 
         return Command_faked_installation
@@ -39,7 +40,9 @@ class Command_yum(HoneyPotCommand):
     Any installed packages, places a 'Segfault' at /usr/bin/PACKAGE.'''
     """
 
-    def start(self):
+    packages: dict[str, dict[str, Any]] = {}
+
+    def start(self) -> None:
         if len(self.args) == 0:
             self.do_help()
         elif len(self.args) > 0 and self.args[0] == "version":
@@ -49,11 +52,11 @@ class Command_yum(HoneyPotCommand):
         else:
             self.do_locked()
 
-    def sleep(self, time, time2=None):
-        d = defer.Deferred()
+    def sleep(self, time: float, time2: Optional[float] = None) -> defer.Deferred:
+        d: defer.Deferred = defer.Deferred()
         if time2:
-            time = random.randint(time * 100, time2 * 100) / 100.0
-        reactor.callLater(time, d.callback, None)
+            time = random.randint(int(time * 100), int(time2 * 100)) / 100.0
+        reactor.callLater(time, d.callback, None)  # type: ignore[attr-defined]
         return d
 
     @inlineCallbacks
@@ -195,17 +198,15 @@ Options:
             self.exit()
             return
 
-        global packages
-        packages = {}
         for y in [re.sub("[^A-Za-z0-9]", "", x) for x in self.args[1:]]:
-            packages[y] = {
+            self.packages[y] = {
                 "version": "{}.{}-{}".format(
                     random.choice([0, 1]), random.randint(1, 40), random.randint(1, 10)
                 ),
                 "size": random.randint(100, 900),
                 "release": f"{random.randint(1, 15)}.el7",
             }
-        totalsize = sum(packages[x]["size"] for x in packages)
+        totalsize: int = sum(self.packages[x]["size"] for x in self.packages)
         repository = "base"
 
         yield self.sleep(1)
@@ -221,10 +222,10 @@ Options:
         yield self.sleep(0.9)
         self.write("Resolving Dependencies\n")
         self.write("--> Running transaction check\n")
-        for p in packages:
+        for p in self.packages:
             self.write(
                 "---> Package {}.{} {}.{} will be installed\n".format(
-                    p, packages[p]["version"], arch, packages[p]["release"]
+                    p, self.packages[p]["version"], arch, self.packages[p]["release"]
                 )
             )
         self.write("--> Finished Dependency Resolution\n")
@@ -239,24 +240,24 @@ Options:
         self.write(" Package\t\t\tArch\t\t\tVersion\t\t\t\tRepository\t\t\tSize\n")
         self.write("{}\n".format("=" * 176))
         self.write("Installing:\n")
-        for p in packages:
+        for p in self.packages:
             self.write(
                 " {}\t\t\t\t{}\t\t\t{}-{}\t\t\t{}\t\t\t\t{} k\n".format(
                     p,
                     arch,
-                    packages[p]["version"],
-                    packages[p]["release"],
+                    self.packages[p]["version"],
+                    self.packages[p]["release"],
                     repository,
-                    packages[p]["size"],
+                    self.packages[p]["size"],
                 )
             )
         self.write("\n")
         self.write("Transaction Summary\n")
         self.write("{}\n".format("=" * 176))
-        self.write(f"Install  {len(packages)} Packages\n\n")
+        self.write(f"Install  {len(self.packages)} Packages\n\n")
 
         self.write(f"Total download size: {totalsize} k\n")
-        self.write(f"Installed size: {totalsize * 0.0032:.1f} M\n")
+        self.write(f"Installed size: {0.0032*totalsize:.1f} M\n")
         self.write("Is this ok [y/d/N]: ")
         # Assume 'yes'
 
@@ -272,50 +273,50 @@ Options:
         self.write("Transaction test succeeded\n")
         self.write("Running transaction\n")
         i = 1
-        for p in packages:
+        for p in self.packages:
             self.write(
                 "  Installing : {}-{}-{}.{} \t\t\t\t {}/{} \n".format(
                     p,
-                    packages[p]["version"],
-                    packages[p]["release"],
+                    self.packages[p]["version"],
+                    self.packages[p]["release"],
                     arch,
                     i,
-                    len(packages),
+                    len(self.packages),
                 )
             )
             yield self.sleep(0.5, 1)
             i += 1
         i = 1
-        for p in packages:
+        for p in self.packages:
             self.write(
                 "  Verifying : {}-{}-{}.{} \t\t\t\t {}/{} \n".format(
                     p,
-                    packages[p]["version"],
-                    packages[p]["release"],
+                    self.packages[p]["version"],
+                    self.packages[p]["release"],
                     arch,
                     i,
-                    len(packages),
+                    len(self.packages),
                 )
             )
             yield self.sleep(0.5, 1)
             i += 1
         self.write("\n")
         self.write("Installed:\n")
-        for p in packages:
+        for p in self.packages:
             self.write(
                 "  {}.{} {}:{}-{} \t\t".format(
                     p,
                     arch,
                     random.randint(0, 2),
-                    packages[p]["version"],
-                    packages[p]["release"],
+                    self.packages[p]["version"],
+                    self.packages[p]["release"],
                 )
             )
         self.write("\n")
         self.write("Complete!\n")
         self.exit()
 
-    def do_locked(self):
+    def do_locked(self) -> None:
         self.errorWrite(
             "Loaded plugins: changelog, kernel-module, ovl, priorities, tsflags, versionlock\n"
         )

@@ -33,7 +33,8 @@ import json
 import random
 from configparser import NoOptionError
 
-import twisted.python.log as log
+from twisted.cred.portal import IRealm
+from twisted.python import log
 
 from cowrie.core.config import CowrieConfig
 from cowrie.shell import fs
@@ -53,7 +54,7 @@ class CowrieServer:
     process = None
     hostname: str = CowrieConfig.get("honeypot", "hostname")
 
-    def __init__(self, realm: str) -> None:
+    def __init__(self, realm: IRealm) -> None:
         try:
             arches = [
                 arch.strip() for arch in CowrieConfig.get("shell", "arch").split(",")
@@ -68,7 +69,7 @@ class CowrieServer:
         """
         Reads process output from JSON file.
         """
-        with open(file) as f:
+        with open(file, encoding="utf-8") as f:
             cmdoutput = json.load(f)
         return cmdoutput
 

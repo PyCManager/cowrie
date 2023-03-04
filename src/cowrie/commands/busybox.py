@@ -61,11 +61,11 @@ class Command_busybox(HoneyPotCommand):
     The command should never call self.exit(), cause it will corrupt cmdstack
     """
 
-    def help(self):
+    def help(self) -> None:
         for ln in busybox_help:
             self.errorWrite(f"{ln}\n")
 
-    def call(self):
+    def call(self) -> None:
         if len(self.args) == 0:
             self.help()
             return
@@ -98,7 +98,7 @@ class Command_busybox(HoneyPotCommand):
 
             # Place this here so it doesn't write out only if last statement
             if self.input_data:
-                self.write(self.input_data)
+                self.writeBytes(self.input_data)
         else:
             self.write(f"{cmd}: applet not found\n")
 

@@ -26,7 +26,7 @@ from twisted.conch.ssh.filetransfer import (
 from twisted.python import log
 from twisted.python.compat import nativeString
 
-import cowrie.shell.pwd as pwd
+from cowrie.shell import pwd
 from cowrie.core.config import CowrieConfig
 
 
@@ -36,9 +36,9 @@ class CowrieSFTPFile:
     SFTPTFile
     """
 
-    transfer_completed = 0
-    bytesReceived = 0
-    bytesReceivedLimit = CowrieConfig.getint(
+    contents: bytes
+    bytesReceived: int = 0
+    bytesReceivedLimit: int = CowrieConfig.getint(
         "honeypot", "download_limit_size", fallback=0
     )
 
@@ -80,10 +80,10 @@ class CowrieSFTPFile:
             self.sftpserver.fs.update_size(self.filename, self.bytesReceived)
         return self.sftpserver.fs.close(self.fd)
 
-    def readChunk(self, offset, length):
+    def readChunk(self, offset: int, length: int) -> bytes:
         return self.contents[offset : offset + length]
 
-    def writeChunk(self, offset, data):
+    def writeChunk(self, offset: int, data: bytes) -> None:
         self.bytesReceived += len(data)
         if self.bytesReceivedLimit and self.bytesReceived > self.bytesReceivedLimit:
             raise filetransfer.SFTPError(filetransfer.FX_FAILURE, "Quota exceeded")
@@ -102,23 +102,17 @@ class CowrieSFTPDirectory:
     def __init__(self, server, directory):
         self.server = server
         self.files = server.fs.listdir(directory)
-        self.files = [".", ".."] + self.files
+        self.files = [".", "..", *self.files]
         self.dir = directory
 
     def __iter__(self):
         return self
 
-    def next(self):
-        """
-        Py2 compatibility
-        """
-        return self.__next__()
-
     def __next__(self):
         try:
             f = self.files.pop(0)
         except IndexError:
-            raise StopIteration
+            raise StopIteration from None
 
         if f == "..":
             directory = self.dir.strip().split("/")

@@ -2,12 +2,12 @@ from __future__ import annotations
 from threading import Lock
 
 from twisted.internet import protocol
-from twisted.internet import reactor  # type: ignore
+from twisted.internet import reactor
 
 
 class ClientProtocol(protocol.Protocol):
-    def dataReceived(self, data):
-        self.server_protocol.transport.write(data)
+    def dataReceived(self, data: bytes) -> None:
+        self.server_protocol.transport.write(data)  # type: ignore
 
     def connectionLost(self, reason):
         self.server_protocol.transport.loseConnection()

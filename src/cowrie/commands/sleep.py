@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from twisted.internet import reactor  # type: ignore
+from twisted.internet import reactor
 
 from cowrie.shell.command import HoneyPotCommand
 
@@ -23,16 +23,16 @@ class Command_sleep(HoneyPotCommand):
 
     pattern = re.compile(r"(\d+)[mhs]?")
 
-    def done(self):
+    def done(self) -> None:
         self.exit()
 
-    def start(self):
+    def start(self) -> None:
         if len(self.args) == 1:
             m = re.match(r"(\d+)[mhs]?", self.args[0])
             if m:
                 _time = int(m.group(1))
                 # Always sleep in seconds, not minutes or hours
-                self.scheduled = reactor.callLater(_time, self.done)
+                self.scheduled = reactor.callLater(_time, self.done)  # type: ignore[attr-defined]
             else:
                 self.write("usage: sleep seconds\n")
                 self.exit()
